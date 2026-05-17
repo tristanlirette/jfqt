@@ -1,0 +1,29 @@
+# Build
+build/
+CMakeCache.txt
+CMakeFiles/
+
+# Qt generated
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# Binaries
+*.o
+*.a
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.user
+*.creator
+*.pro.user
+
+# Nix
+result
+result-*
+
+# Brainstorm artifacts
+.superpowers/
