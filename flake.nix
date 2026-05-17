@@ -42,9 +42,14 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             cmake
-            qt6.full
+            qt6.qtbase
+            qt6.qttools
             gcc
             pkg-config
+          ];
+
+          nativeBuildInputs = with pkgs; [
+            qt6.wrapQtAppsHook
           ];
         };
       }
