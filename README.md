@@ -12,6 +12,9 @@ Qt6 GUI wrapper for [jftui](https://github.com/Aanok/jftui), a Jellyfin TUI clie
 
 <img width="620" height="610" alt="image" src="https://github.com/user-attachments/assets/ce72696b-c367-4b8f-9851-5db8b2db24fb" />
 
+<img width="1184" height="472" alt="image" src="https://github.com/user-attachments/assets/42c1ca36-a79f-4011-8bf5-10dfb3caa7e3" />
+
+
 ## Dependencies
 
 - Qt6 (Widgets)
