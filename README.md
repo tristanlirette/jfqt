@@ -6,7 +6,7 @@ Qt6 GUI wrapper for [jftui](https://github.com/Aanok/jftui), a Jellyfin TUI clie
 
 - Browse your Jellyfin libraries through a simple button-based interface and breadcrumb navigation
 - Direct media playback via mpv (no transcoding)
-- Resume-playback
+- Resume playback
 - Filters
 - First-run setup wizard for server URL and credentials
 - Automatic login with credential storage
