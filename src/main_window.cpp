@@ -13,10 +13,77 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <QToolButton>
+#include <QMenu>
+#include <QAction>
 
 MainWindow::MainWindow(JftProcess *process, QWidget *parent)
     : QMainWindow(parent), m_process(process)
 {
+    // ── Filter menu ──────────────────────────────────────────
+    m_filterMenu = new QMenu(this);
+    static const struct { const char *label; char ch; } kFilters[] = {
+        {"Played",    'p'},
+        {"Unplayed",  'u'},
+        {"Favorite",  'f'},
+        {"Resumable", 'r'},
+        {"Liked",     'l'},
+        {"Disliked",  'd'},
+    };
+    for (const auto &f : kFilters) {
+        auto *action = m_filterMenu->addAction(f.label);
+        action->setCheckable(true);
+        action->setData(QChar(f.ch));
+    }
+    m_filterMenu->addSeparator();
+    m_filterMenu->addAction("Clear Filters");
+
+    m_filterButton = new QToolButton;
+    m_filterButton->setText("Filters");
+    m_filterButton->setFixedWidth(80);
+    m_filterButton->setPopupMode(QToolButton::InstantPopup);
+    m_filterButton->setMenu(m_filterMenu);
+
+    // Incompatible pairs: checking one unchecks its counterpart
+    static const struct { char ch; char other; } kIncompat[] = {
+        {'p', 'u'}, {'u', 'p'}, {'l', 'd'}, {'d', 'l'},
+    };
+
+    for (QAction *a : m_filterMenu->actions()) {
+        if (!a->isCheckable()) continue;
+        connect(a, &QAction::triggered, this, [this, a]() {
+            if (a->isChecked()) {
+                char ch = a->data().toChar().toLatin1();
+                for (const auto &pair : kIncompat) {
+                    if (pair.ch == ch) {
+                        for (QAction *other : m_filterMenu->actions()) {
+                            if (other->isCheckable() && other->data().toChar().toLatin1() == pair.other)
+                                other->setChecked(false);
+                        }
+                    }
+                }
+            }
+            QString chars;
+            for (QAction *act : m_filterMenu->actions()) {
+                if (act->isCheckable() && act->isChecked())
+                    chars += act->data().toChar();
+            }
+            if (chars.isEmpty()) {
+                m_process->sendCommand("f c\r");
+            } else {
+                m_process->sendCommand("f " + chars + "\r");
+            }
+            m_filterButton->setText(chars.isEmpty() ? "Filters" : "Filters ●");
+        });
+    }
+
+    // Wire the Clear Filters action
+    QAction *clearAction = m_filterMenu->actions().last();
+    connect(clearAction, &QAction::triggered, this, [this]() {
+        resetFilters();
+        m_process->sendCommand("f c\r");
+    });
+
     // ── Header row ─────────────────────────────────────────
     auto *header       = new QWidget;
     auto *headerLayout = new QHBoxLayout(header);
@@ -25,12 +92,14 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
     m_backButton = new QPushButton("← Back");
     m_backButton->setFixedWidth(80);
     connect(m_backButton, &QPushButton::clicked, this, [this]() {
+        resetFilters();
         m_process->sendCommand("..\r");
     });
 
     m_homeButton = new QPushButton("⌂ Home");
     m_homeButton->setFixedWidth(80);
     connect(m_homeButton, &QPushButton::clicked, this, [this]() {
+        resetFilters();
         m_process->sendCommand("h\r");
     });
 
@@ -38,6 +107,7 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
 
     headerLayout->addWidget(m_backButton);
     headerLayout->addWidget(m_homeButton);
+    headerLayout->addWidget(m_filterButton);
     headerLayout->addStretch(1);
     headerLayout->addWidget(m_breadcrumb);
 
@@ -103,6 +173,7 @@ void MainWindow::onItemAdded(int index, const QString &name) {
     btn->setMinimumHeight(36);
     btn->setStyleSheet("text-align: left; padding-left: 8px;");
     connect(btn, &QPushButton::clicked, this, [this, index]() {
+        resetFilters();
         m_backButton->setEnabled(false);
         m_homeButton->setEnabled(false);
         m_listWidget->setEnabled(false);
@@ -227,4 +298,12 @@ void MainWindow::onSetupCredentialsInvalid(const QString &prompt) {
     } else {
         m_process->sendCommand("n\r");
     }
+}
+
+void MainWindow::resetFilters() {
+    for (QAction *a : m_filterMenu->actions()) {
+        if (a->isCheckable())
+            a->setChecked(false);
+    }
+    m_filterButton->setText("Filters");
 }

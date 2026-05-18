@@ -1,7 +1,9 @@
 #pragma once
 #include <QMainWindow>
 class QPushButton;
+class QToolButton;
 class QLabel;
+class QMenu;
 class QVBoxLayout;
 class QCloseEvent;
 class JftProcess;
@@ -22,9 +24,12 @@ private slots:
     void onLoginFailed();
     void onSetupCredentialsInvalid(const QString &prompt);
 private:
+    void resetFilters();
     JftProcess  *m_process;
     QPushButton *m_backButton;
     QPushButton *m_homeButton;
+    QToolButton *m_filterButton;
+    QMenu       *m_filterMenu;
     QLabel      *m_breadcrumb;
     QWidget     *m_listWidget;
     QVBoxLayout *m_listLayout;
