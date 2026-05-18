@@ -25,6 +25,7 @@ signals:
     void setupRequired();
     void loginFailed();
     void setupCredentialsInvalid(const QString &prompt);
+    void promptReady();
 private slots:
     void onDataReady();
     void onChildExited();

@@ -1,10 +1,10 @@
 #pragma once
 #include <QMainWindow>
-class QPushButton;
+#include <QStringList>
 class QToolButton;
-class QLabel;
 class QMenu;
 class QVBoxLayout;
+class QHBoxLayout;
 class QCloseEvent;
 class JftProcess;
 
@@ -23,14 +23,18 @@ private slots:
     void onSetupRequired();
     void onLoginFailed();
     void onSetupCredentialsInvalid(const QString &prompt);
+    void onPromptReady();
 private:
     void resetFilters();
+    void rebuildBreadcrumb();
     JftProcess  *m_process;
-    QPushButton *m_backButton;
-    QPushButton *m_homeButton;
     QToolButton *m_filterButton;
     QMenu       *m_filterMenu;
-    QLabel      *m_breadcrumb;
+    QWidget     *m_breadcrumbWidget;
+    QHBoxLayout *m_breadcrumbLayout;
     QWidget     *m_listWidget;
     QVBoxLayout *m_listLayout;
+    QStringList  m_titleStack;
+    bool         m_awaitingPush  = false;
+    int          m_pendingBacks  = 0;
 };

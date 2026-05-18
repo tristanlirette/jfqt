@@ -4,16 +4,12 @@ Qt6 GUI wrapper for [jftui](https://github.com/Aanok/jftui), a Jellyfin TUI clie
 
 ## Features
 
-- Browse your Jellyfin libraries through a simple button-based interface
+- Browse your Jellyfin libraries through a simple button-based interface and breadcrumb navigation
 - Direct media playback via mpv (no transcoding)
-- Resume-playback prompt support
+- Resume-playback
+- Filters
 - First-run setup wizard for server URL and credentials
 - Automatic login with credential storage
-
-<img width="620" height="610" alt="image" src="https://github.com/user-attachments/assets/ce72696b-c367-4b8f-9851-5db8b2db24fb" />
-
-<img width="1184" height="472" alt="image" src="https://github.com/user-attachments/assets/42c1ca36-a79f-4011-8bf5-10dfb3caa7e3" />
-
 
 ## Dependencies
 
@@ -22,7 +18,7 @@ Qt6 GUI wrapper for [jftui](https://github.com/Aanok/jftui), a Jellyfin TUI clie
 - CMake 3.16+
 - A C++17 compiler
 
-## Building with CMake
+## Build
 
 ```bash
 cmake -B build
@@ -41,7 +37,7 @@ Run tests:
 ctest --test-dir build --output-on-failure
 ```
 
-## Building with Nix
+## Build with Nix
 
 ```bash
 nix build
@@ -49,7 +45,7 @@ nix build
 
 The binary is at `result/bin/jfqt`.
 
-## Installation as a Nix flake
+## Install flake
 
 Add jfqt to your NixOS configuration or `home-manager` by referencing this flake.
 

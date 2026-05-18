@@ -16,6 +16,18 @@
 #include <QToolButton>
 #include <QMenu>
 #include <QAction>
+#include <QMouseEvent>
+#include <QTimer>
+
+class ClickableLabel : public QLabel {
+    Q_OBJECT
+public:
+    using QLabel::QLabel;
+signals:
+    void clicked();
+protected:
+    void mousePressEvent(QMouseEvent *) override { emit clicked(); }
+};
 
 MainWindow::MainWindow(JftProcess *process, QWidget *parent)
     : QMainWindow(parent), m_process(process)
@@ -44,7 +56,6 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
     m_filterButton->setPopupMode(QToolButton::InstantPopup);
     m_filterButton->setMenu(m_filterMenu);
 
-    // Incompatible pairs: checking one unchecks its counterpart
     static const struct { char ch; char other; } kIncompat[] = {
         {'p', 'u'}, {'u', 'p'}, {'l', 'd'}, {'d', 'l'},
     };
@@ -77,7 +88,6 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
         });
     }
 
-    // Wire the Clear Filters action
     QAction *clearAction = m_filterMenu->actions().last();
     connect(clearAction, &QAction::triggered, this, [this]() {
         resetFilters();
@@ -89,27 +99,16 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
     auto *headerLayout = new QHBoxLayout(header);
     headerLayout->setContentsMargins(8, 4, 8, 4);
 
-    m_backButton = new QPushButton("← Back");
-    m_backButton->setFixedWidth(80);
-    connect(m_backButton, &QPushButton::clicked, this, [this]() {
-        resetFilters();
-        m_process->sendCommand("..\r");
-    });
+    m_breadcrumbWidget = new QWidget;
+    m_breadcrumbLayout = new QHBoxLayout(m_breadcrumbWidget);
+    m_breadcrumbLayout->setContentsMargins(0, 0, 0, 0);
+    m_breadcrumbLayout->setSpacing(0);
+    auto *connectingLabel = new QLabel("Connecting…");
+    m_breadcrumbLayout->addWidget(connectingLabel);
+    m_breadcrumbLayout->addStretch(1);
 
-    m_homeButton = new QPushButton("⌂ Home");
-    m_homeButton->setFixedWidth(80);
-    connect(m_homeButton, &QPushButton::clicked, this, [this]() {
-        resetFilters();
-        m_process->sendCommand("h\r");
-    });
-
-    m_breadcrumb = new QLabel("Connecting…");
-
-    headerLayout->addWidget(m_backButton);
-    headerLayout->addWidget(m_homeButton);
+    headerLayout->addWidget(m_breadcrumbWidget, 1);
     headerLayout->addWidget(m_filterButton);
-    headerLayout->addStretch(1);
-    headerLayout->addWidget(m_breadcrumb);
 
     // ── Scrollable button list ──────────────────────────────
     m_listWidget = new QWidget;
@@ -149,9 +148,48 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
             this, &MainWindow::onLoginFailed);
     connect(process, &JftProcess::setupCredentialsInvalid,
             this, &MainWindow::onSetupCredentialsInvalid);
+    connect(process, &JftProcess::promptReady,
+            this, &MainWindow::onPromptReady);
 
     resize(640, 600);
     setWindowTitle("jfqt - GUI for jftui");
+}
+
+void MainWindow::rebuildBreadcrumb() {
+    while (QLayoutItem *item = m_breadcrumbLayout->takeAt(0)) {
+        delete item->widget();
+        delete item;
+    }
+    for (int i = 0; i < m_titleStack.size(); ++i) {
+        if (i > 0) {
+            auto *sep = new QLabel(" / ");
+            m_breadcrumbLayout->addWidget(sep);
+        }
+        auto *label = new ClickableLabel(m_titleStack[i]);
+        if (i < m_titleStack.size() - 1) {
+            label->setForegroundRole(QPalette::Link);
+            label->setStyleSheet("text-decoration: underline;");
+            label->setCursor(Qt::PointingHandCursor);
+            connect(label, &ClickableLabel::clicked, this, [this, i]() {
+                resetFilters();
+                if (i == 0) {
+                    m_titleStack = QStringList{m_titleStack[0]};
+                    m_pendingBacks = 0;
+                    m_breadcrumbWidget->setEnabled(false);
+                    m_process->sendCommand("h\r");
+                } else {
+                    int delta = m_titleStack.size() - 1 - i;
+                    m_titleStack = m_titleStack.mid(0, i + 1);
+                    m_pendingBacks = delta;
+                    m_breadcrumbWidget->setEnabled(false);
+                    m_process->sendCommand("..\r");
+                }
+                QTimer::singleShot(0, this, [this] { rebuildBreadcrumb(); });
+            });
+        }
+        m_breadcrumbLayout->addWidget(label);
+    }
+    m_breadcrumbLayout->addStretch(1);
 }
 
 void MainWindow::onMenuCleared() {
@@ -159,23 +197,36 @@ void MainWindow::onMenuCleared() {
         delete item->widget();
         delete item;
     }
-    m_backButton->setEnabled(true);
-    m_homeButton->setEnabled(true);
-    m_listWidget->setEnabled(true);
+    if (m_pendingBacks > 0)
+        --m_pendingBacks;
+    if (m_pendingBacks == 0) {
+        m_breadcrumbWidget->setEnabled(true);
+        m_listWidget->setEnabled(true);
+    }
+}
+
+void MainWindow::onPromptReady() {
+    if (m_pendingBacks > 0)
+        m_process->sendCommand("..\r");
 }
 
 void MainWindow::onMenuTitleChanged(const QString &title) {
-    m_breadcrumb->setText(title);
+    if (m_awaitingPush || m_titleStack.isEmpty()) {
+        m_titleStack.append(title);
+        m_awaitingPush = false;
+        rebuildBreadcrumb();
+    }
 }
 
 void MainWindow::onItemAdded(int index, const QString &name) {
+    if (m_pendingBacks > 0) return;
     auto *btn = new QPushButton(name);
     btn->setMinimumHeight(36);
     btn->setStyleSheet("text-align: left; padding-left: 8px;");
     connect(btn, &QPushButton::clicked, this, [this, index]() {
         resetFilters();
-        m_backButton->setEnabled(false);
-        m_homeButton->setEnabled(false);
+        m_awaitingPush = true;
+        m_breadcrumbWidget->setEnabled(false);
         m_listWidget->setEnabled(false);
         m_process->sendCommand(QString::number(index) + "\r");
     });
@@ -183,9 +234,15 @@ void MainWindow::onItemAdded(int index, const QString &name) {
 }
 
 void MainWindow::onProcessExited() {
-    m_backButton->setEnabled(false);
-    m_homeButton->setEnabled(false);
-    m_breadcrumb->setText("jftui exited");
+    m_titleStack.clear();
+    while (QLayoutItem *item = m_breadcrumbLayout->takeAt(0)) {
+        delete item->widget();
+        delete item;
+    }
+    auto *label = new QLabel("jftui exited");
+    m_breadcrumbLayout->addWidget(label);
+    m_breadcrumbLayout->addStretch(1);
+    m_breadcrumbWidget->setEnabled(false);
 }
 
 void MainWindow::onYnPrompt(const QString &question) {
@@ -207,7 +264,6 @@ void MainWindow::onYnPrompt(const QString &question) {
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    // JftProcess destructor handles "q\r" + 500ms wait + SIGTERM
     event->accept();
 }
 
@@ -216,7 +272,7 @@ void MainWindow::onSetupRequired() {
 
     auto *dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->setWindowTitle("jftui — First-run Setup");
+    dlg->setWindowTitle("jftui - First-run Setup");
 
     auto *urlEdit  = new QLineEdit("https://");
     auto *sslCheck = new QCheckBox("Ignore SSL hostname validation");
@@ -307,3 +363,5 @@ void MainWindow::resetFilters() {
     }
     m_filterButton->setText("Filters");
 }
+
+#include "main_window.moc"

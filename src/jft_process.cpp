@@ -147,7 +147,12 @@ void JftProcess::onDataReady() {
         m_lineBuf.remove(0, pos + 1);
         processLine(line);
     }
-
+    // jftui's input prompt ("> ") never ends with \n; detect and process it
+    // immediately so promptReady() fires without waiting for the next command.
+    if (::stripAnsi(QString::fromUtf8(m_lineBuf)).trimmed() == ">") {
+        processLine(m_lineBuf);
+        m_lineBuf.clear();
+    }
 }
 
 void JftProcess::processLine(const QByteArray &raw) {
@@ -162,7 +167,9 @@ void JftProcess::processLine(const QByteArray &raw) {
     } else {
         qDebug().noquote() << "[line] other:" << debugBytes(raw);
         QString text = ::stripAnsi(QString::fromUtf8(raw)).trimmed();
-        if (text.contains("could not login", Qt::CaseInsensitive)) {
+        if (text == ">") {
+            emit promptReady();
+        } else if (text.contains("could not login", Qt::CaseInsensitive)) {
             m_setupQueue.clear();
             emit loginFailed();
         } else if (text.contains("configure jftui", Qt::CaseInsensitive)) {
