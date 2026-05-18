@@ -24,6 +24,7 @@ private slots:
 private:
     JftProcess  *m_process;
     QPushButton *m_backButton;
+    QPushButton *m_homeButton;
     QLabel      *m_breadcrumb;
     QWidget     *m_listWidget;
     QVBoxLayout *m_listLayout;

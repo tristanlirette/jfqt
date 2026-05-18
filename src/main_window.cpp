@@ -28,10 +28,18 @@ MainWindow::MainWindow(JftProcess *process, QWidget *parent)
         m_process->sendCommand("..\r");
     });
 
+    m_homeButton = new QPushButton("⌂ Home");
+    m_homeButton->setFixedWidth(80);
+    connect(m_homeButton, &QPushButton::clicked, this, [this]() {
+        m_process->sendCommand("h\r");
+    });
+
     m_breadcrumb = new QLabel("Connecting…");
 
     headerLayout->addWidget(m_backButton);
-    headerLayout->addWidget(m_breadcrumb, 1);
+    headerLayout->addWidget(m_homeButton);
+    headerLayout->addStretch(1);
+    headerLayout->addWidget(m_breadcrumb);
 
     // ── Scrollable button list ──────────────────────────────
     m_listWidget = new QWidget;
@@ -82,6 +90,7 @@ void MainWindow::onMenuCleared() {
         delete item;
     }
     m_backButton->setEnabled(true);
+    m_homeButton->setEnabled(true);
     m_listWidget->setEnabled(true);
 }
 
@@ -95,6 +104,7 @@ void MainWindow::onItemAdded(int index, const QString &name) {
     btn->setStyleSheet("text-align: left; padding-left: 8px;");
     connect(btn, &QPushButton::clicked, this, [this, index]() {
         m_backButton->setEnabled(false);
+        m_homeButton->setEnabled(false);
         m_listWidget->setEnabled(false);
         m_process->sendCommand(QString::number(index) + "\r");
     });
@@ -103,6 +113,7 @@ void MainWindow::onItemAdded(int index, const QString &name) {
 
 void MainWindow::onProcessExited() {
     m_backButton->setEnabled(false);
+    m_homeButton->setEnabled(false);
     m_breadcrumb->setText("jftui exited");
 }
 
