@@ -11,6 +11,8 @@ Qt6 GUI wrapper for [jftui](https://github.com/Aanok/jftui), a Jellyfin TUI clie
 - First-run setup wizard for server URL and credentials
 - Automatic login with credential storage
 
+<img width="885" height="873" alt="image" src="https://github.com/user-attachments/assets/5f771a07-ad80-474b-981b-d2eb438cefc0" />
+
 ## Dependencies
 
 - Qt6 (Widgets)
