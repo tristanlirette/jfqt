@@ -80,3 +80,7 @@ Run it directly without installing:
 ```bash
 nix run github:tristanlirette/jfqt
 ```
+## TODO
+
+- Implement support for m command (mark (un)favorite and (un)played
+- Add selection support with "*" for all and multiple commands for specific selection
